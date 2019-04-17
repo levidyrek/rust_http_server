@@ -27,12 +27,17 @@ fn handle_client(stream: TcpStream) -> io::Result<()> {
     let method = parts.next().unwrap();  // Should only be GET
     let path = parts.next().unwrap();  // Requested path
 
-    let mut response = String::from("HTTP/1.0 200 OK
-Content-type: text/html
-
-<h1>Success!</h1>");
+    let mut response = String::from("\
+        HTTP/1.0 200 OK\n\
+        Content-type: text/html\n\
+        \n\
+        <h1>Success!</h1>\n\
+    ");
     if method != "GET" {
-        response = String::from("HTTP/1.0 405 Method Not Allowed");
+        response = String::from("\
+            HTTP/1.0 405 Method Not Allowed\n\
+            Allow: GET\n\
+        ");
     }
 
     buf.write_all(response.as_bytes())?;
