@@ -1,47 +1,14 @@
 use std::io;
-use std::io::prelude::*;
-use std::net::{TcpListener, TcpStream};
-use bufstream::BufStream;
+use std::net::TcpListener;
+
+use rust_http_server;
 
 fn main() -> io::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:8001")?;
 
     for stream in listener.incoming() {
-        handle_client(stream?)?;
+        rust_http_server::handle_client(stream?)?;
     }
-
-    Ok(())
-}
-
-fn handle_client(stream: TcpStream) -> io::Result<()> {
-    let mut request = String::new();
-    let mut buf = BufStream::new(stream);
-
-    // Get only the first line of the request, since this
-    // is a static HTTP 1.0 server.
-    buf.read_line(&mut request).unwrap();
-
-    println!("Request: {}", request);
-
-    let mut parts = request.split(" ");
-    let method = parts.next().unwrap();  // Should only be GET
-    let path = parts.next().unwrap();  // Requested path
-
-    let mut response = String::from("\
-        HTTP/1.0 200 OK\n\
-        Content-type: text/html\n\
-        \n\
-        <h1>Success!</h1>\n\
-    ");
-    if method != "GET" {
-        response = String::from("\
-            HTTP/1.0 405 Method Not Allowed\n\
-            Allow: GET\n\
-        ");
-    }
-
-    buf.write_all(response.as_bytes())?;
-    println!("Response: {}", response);
 
     Ok(())
 }
