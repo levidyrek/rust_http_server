@@ -5,6 +5,7 @@ use bufstream::BufStream;
 use http::StatusCode;
 
 
+// TODO: Make this configurable.
 static STATIC_ROOT: &str = "/static";
 
 struct Request {
@@ -44,7 +45,7 @@ pub fn handle_client(stream: TcpStream) -> io::Result<()> {
     let mut buf = BufStream::new(stream);
     let request = parse_request(&mut buf);
     let response = build_response(request);
-    let mut formatted = format_response(response);
+    let formatted = format_response(response);
 
     buf.write_all(formatted.as_bytes())?;
     println!("Response: {}", formatted);
@@ -73,15 +74,30 @@ fn build_response(request: Request) -> Response {
     if request.method != "GET" {
         response.status = StatusCode::METHOD_NOT_ALLOWED;
     } else {
-        response.body = Some(String::from("<h1>Success!</h1>"));
-        response.headers.content_type = Some(String::from("text/html"));
+        add_file_to_response(&request.path, &mut response);
     }
 
     response
 }
 
+fn add_file_to_response(path: &String, response: &mut Response) {
+    let path = format!("{}{}", STATIC_ROOT, path);
+    let contents = fs::read_to_string(path);
+    match contents {
+        Ok(contents) => {
+            response.body = Some(contents);
+            // TODO: Get correct content type.
+            response.headers.content_type = Some(String::from("text/html"));
+        },
+        Err(_e) => {
+            // TODO: Handle specific errors.
+            response.status = StatusCode::NOT_FOUND;
+        }
+    }
+}
+
 fn format_response(response: Response) -> String {
-    let mut result = String::new();
+    let mut result;
     let status_reason = match response.status.canonical_reason() {
         Some(reason) => reason,
         None => "",
