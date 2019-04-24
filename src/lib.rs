@@ -13,13 +13,54 @@ struct Request {
     path: String,
 }
 
+enum ContentType {
+    XML,
+    GIF,
+    HTML,
+    JPEG,
+    PNG,
+    SVG,
+    CSS,
+    TEXT,
+}
+
+impl ContentType {
+    fn from_file_ext(ext: &str) -> ContentType {
+        match ext {
+            "css" => ContentType::CSS,
+            "gif" => ContentType::GIF,
+            "htm" => ContentType::HTML,
+            "html" => ContentType::HTML,
+            "jpg" => ContentType::JPEG,
+            "png" => ContentType::PNG,
+            "svg" => ContentType::SVG,
+            "txt" => ContentType::TEXT,
+            "xml" => ContentType::XML,
+            _ => ContentType::TEXT,
+        }
+    }
+
+    fn value(&self) -> &str {
+        match *self {
+            ContentType::XML => "application/xml",
+            ContentType::GIF => "image/gif",
+            ContentType::HTML => "text/html",
+            ContentType::JPEG => "image/jpeg",
+            ContentType::PNG => "image/png",
+            ContentType::SVG => "image/svg+xml",
+            ContentType::CSS => "text/css",
+            ContentType::TEXT => "text/plain",
+        }
+    }
+}
+
 struct ResponseHeaders {
-    content_type: Option<String>,
+    content_type: Option<ContentType>,
 }
 
 impl ResponseHeaders {
-    pub fn new() -> ResponseHeaders {
-        ResponseHeaders{
+    fn new() -> ResponseHeaders {
+        ResponseHeaders {
             content_type: None,
         }
     }
@@ -32,7 +73,7 @@ struct Response {
 }
 
 impl Response {
-    pub fn new() -> Response {
+    fn new() -> Response {
         Response {
             body: None,
             headers: ResponseHeaders::new(),
@@ -66,7 +107,7 @@ fn parse_request(buf: &mut BufStream<TcpStream>) -> Request {
     let method = parts.next().unwrap().to_string();
     let path = parts.next().unwrap().to_string();
 
-    Request{ method: method, path: path }
+    Request { method: method, path: path }
 }
 
 fn build_response(request: Request) -> Response {
@@ -87,7 +128,7 @@ fn add_file_to_response(path: &String, response: &mut Response) {
         Ok(contents) => {
             response.body = Some(contents);
             // TODO: Get correct content type.
-            response.headers.content_type = Some(String::from("text/html"));
+            response.headers.content_type = Some(ContentType::HTML);
         },
         Err(_e) => {
             // TODO: Handle specific errors.
@@ -111,7 +152,8 @@ fn format_response(response: Response) -> String {
 
     match response.headers.content_type {
         Some(content_type) => {
-            result = format!("{}Content-type: {}\n", result, content_type);
+            result = format!(
+                "{}Content-type: {}\n", result, content_type.value());
         },
         _ => (),
     }
