@@ -31,6 +31,7 @@ impl ContentType {
             "gif" => ContentType::GIF,
             "htm" => ContentType::HTML,
             "html" => ContentType::HTML,
+            "jpeg" => ContentType::JPEG,
             "jpg" => ContentType::JPEG,
             "png" => ContentType::PNG,
             "svg" => ContentType::SVG,
@@ -67,7 +68,7 @@ impl ResponseHeaders {
 }
 
 struct Response {
-    body: Option<String>,
+    body: Option<Vec<u8>>,
     headers: ResponseHeaders,
     status: StatusCode,
 }
@@ -88,8 +89,7 @@ pub fn handle_client(stream: TcpStream) -> io::Result<()> {
     let response = build_response(request);
     let formatted = format_response(response);
 
-    buf.write_all(formatted.as_bytes())?;
-    println!("Response: {}", formatted);
+    buf.write_all(&formatted)?;
 
     Ok(())
 }
@@ -123,12 +123,12 @@ fn build_response(request: Request) -> Response {
 
 fn add_file_to_response(path: &String, response: &mut Response) {
     let path = format!("{}{}", STATIC_ROOT, path);
-    let contents = fs::read_to_string(path);
+    let contents = fs::read(&path);
     match contents {
         Ok(contents) => {
             response.body = Some(contents);
-            // TODO: Get correct content type.
-            response.headers.content_type = Some(ContentType::HTML);
+            let ext = path.split(".").last().unwrap();
+            response.headers.content_type = Some(ContentType::from_file_ext(ext));
         },
         Err(_e) => {
             // TODO: Handle specific errors.
@@ -137,7 +137,7 @@ fn add_file_to_response(path: &String, response: &mut Response) {
     }
 }
 
-fn format_response(response: Response) -> String {
+fn format_response(response: Response) -> Vec<u8> {
     let mut result;
     let status_reason = match response.status.canonical_reason() {
         Some(reason) => reason,
@@ -158,12 +158,15 @@ fn format_response(response: Response) -> String {
         _ => (),
     }
 
+    let mut bytes = result.as_bytes().to_vec();
+
     match response.body {
-        Some(body) => {
-            result = format!("{}\n{}\n", result, body);
+        Some(mut body) => {
+            bytes.append(&mut "\n".as_bytes().to_vec());
+            bytes.append(&mut body);
         },
         _ => (),
     }
 
-    result
+    bytes
 }
