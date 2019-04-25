@@ -1,5 +1,6 @@
 use std::{io, fs};
 use std::io::prelude::*;
+use std::io::ErrorKind;
 use std::net::TcpStream;
 use bufstream::BufStream;
 use http::StatusCode;
@@ -130,9 +131,12 @@ fn add_file_to_response(path: &String, response: &mut Response) {
             let ext = path.split(".").last().unwrap();
             response.headers.content_type = Some(ContentType::from_file_ext(ext));
         },
-        Err(_e) => {
-            // TODO: Handle specific errors.
-            response.status = StatusCode::NOT_FOUND;
+        Err(e) => {
+            response.status = match e.kind() {
+                ErrorKind::NotFound => StatusCode::NOT_FOUND,
+                ErrorKind::PermissionDenied => StatusCode::FORBIDDEN,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            }
         }
     }
 }
