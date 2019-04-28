@@ -15,14 +15,14 @@ struct Request {
 }
 
 enum ContentType {
-    XML,
+    CSS,
     GIF,
     HTML,
     JPEG,
     PNG,
     SVG,
-    CSS,
     TEXT,
+    XML,
 }
 
 impl ContentType {
@@ -44,14 +44,14 @@ impl ContentType {
 
     fn value(&self) -> &str {
         match *self {
-            ContentType::XML => "application/xml",
+            ContentType::CSS => "text/css",
             ContentType::GIF => "image/gif",
             ContentType::HTML => "text/html",
             ContentType::JPEG => "image/jpeg",
             ContentType::PNG => "image/png",
             ContentType::SVG => "image/svg+xml",
-            ContentType::CSS => "text/css",
             ContentType::TEXT => "text/plain",
+            ContentType::XML => "application/xml",
         }
     }
 }
