@@ -86,29 +86,36 @@ impl Response {
 
 pub fn handle_client(stream: TcpStream) -> io::Result<()> {
     let mut buf = BufStream::new(stream);
-    let request = parse_request(&mut buf);
-    let response = build_response(request);
-    let formatted = format_response(response);
+    let mut request_line = String::new();
 
+    // Get only the first line of the request, since this
+    // is a static HTTP 1.0 server.
+    buf.read_line(&mut request_line)?;
+    let response = match parse_request(&mut request_line) {
+        Ok(request) => build_response(request),
+        Err(()) => create_bad_request_response(),
+    };
+
+    let formatted = format_response(response);
     buf.write_all(&formatted)?;
 
     Ok(())
 }
 
-fn parse_request(buf: &mut BufStream<TcpStream>) -> Request {
-    let mut request = String::new();
-
-    // Get only the first line of the request, since this
-    // is a static HTTP 1.0 server.
-    buf.read_line(&mut request).unwrap();
-
+fn parse_request(request: &mut String) -> Result<Request, ()> {
     println!("Request: {}", request);
 
     let mut parts = request.split(" ");
-    let method = parts.next().unwrap().to_string();
-    let path = parts.next().unwrap().to_string();
+    let method = match parts.next() {
+        Some(method) => method.to_string(),
+        None => return Err(()),
+    };
+    let path = match parts.next() {
+        Some(path) => path.to_string(),
+        None => return Err(()),
+    };
 
-    Request { method: method, path: path }
+    Ok( Request { method: method, path: path } )
 }
 
 fn build_response(request: Request) -> Response {
@@ -128,7 +135,7 @@ fn add_file_to_response(path: &String, response: &mut Response) {
     match contents {
         Ok(contents) => {
             response.body = Some(contents);
-            let ext = path.split(".").last().unwrap();
+            let ext = path.split(".").last().unwrap_or("");
             response.headers.content_type = Some(ContentType::from_file_ext(ext));
         },
         Err(e) => {
@@ -139,6 +146,13 @@ fn add_file_to_response(path: &String, response: &mut Response) {
             }
         }
     }
+}
+
+fn create_bad_request_response() -> Response {
+    let mut response = Response::new();
+    response.status = StatusCode::BAD_REQUEST;
+
+    response
 }
 
 fn format_response(response: Response) -> Vec<u8> {
