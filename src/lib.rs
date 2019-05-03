@@ -6,9 +6,6 @@ use bufstream::BufStream;
 use http::StatusCode;
 
 
-// TODO: Make this configurable.
-static STATIC_ROOT: &str = "/static";
-
 struct Request {
     method: String,
     path: String,
@@ -84,7 +81,7 @@ impl Response {
     }
 }
 
-pub fn handle_client(stream: TcpStream) -> io::Result<()> {
+pub fn handle_client(stream: TcpStream, static_root: &String) -> io::Result<()> {
     let mut buf = BufStream::new(stream);
     let mut request_line = String::new();
 
@@ -92,7 +89,7 @@ pub fn handle_client(stream: TcpStream) -> io::Result<()> {
     // is a static HTTP 1.0 server.
     buf.read_line(&mut request_line)?;
     let response = match parse_request(&mut request_line) {
-        Ok(request) => build_response(request),
+        Ok(request) => build_response(request, static_root),
         Err(()) => create_bad_request_response(),
     };
 
@@ -118,19 +115,19 @@ fn parse_request(request: &mut String) -> Result<Request, ()> {
     Ok( Request { method: method, path: path } )
 }
 
-fn build_response(request: Request) -> Response {
+fn build_response(request: Request, static_root: &String) -> Response {
     let mut response = Response::new();
     if request.method != "GET" {
         response.status = StatusCode::METHOD_NOT_ALLOWED;
     } else {
-        add_file_to_response(&request.path, &mut response);
+        add_file_to_response(&request.path, &mut response, static_root);
     }
 
     response
 }
 
-fn add_file_to_response(path: &String, response: &mut Response) {
-    let path = format!("{}{}", STATIC_ROOT, path);
+fn add_file_to_response(path: &String, response: &mut Response, static_root: &String) {
+    let path = format!("{}{}", static_root, path);
     let contents = fs::read(&path);
     match contents {
         Ok(contents) => {
