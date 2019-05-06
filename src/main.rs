@@ -5,6 +5,9 @@ use std::path::Path;
 
 use rust_http_server;
 
+extern crate chrono;
+
+
 fn main() -> io::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:8001")?;
     let static_root = match env::var("STATIC_ROOT") {

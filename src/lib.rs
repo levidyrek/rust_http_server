@@ -2,13 +2,17 @@ use std::{io, fs};
 use std::io::prelude::*;
 use std::io::ErrorKind;
 use std::net::TcpStream;
+
 use bufstream::BufStream;
+use chrono::prelude::*;
 use http::StatusCode;
 
 
 struct Request {
+    http_version: String,
     method: String,
     path: String,
+    time: DateTime<Local>,
 }
 
 enum ContentType {
@@ -89,7 +93,11 @@ pub fn handle_client(stream: TcpStream, static_root: &String) -> io::Result<()> 
     // is a static HTTP 1.0 server.
     buf.read_line(&mut request_line)?;
     let response = match parse_request(&mut request_line) {
-        Ok(request) => build_response(request, static_root),
+        Ok(request) => {
+            let response = build_response(&request, static_root);
+            log_request(&request, &response);
+            response
+        },
         Err(()) => create_bad_request_response(),
     };
 
@@ -100,8 +108,6 @@ pub fn handle_client(stream: TcpStream, static_root: &String) -> io::Result<()> 
 }
 
 fn parse_request(request: &mut String) -> Result<Request, ()> {
-    println!("Request: {}", request);
-
     let mut parts = request.split(" ");
     let method = match parts.next() {
         Some(method) => method.to_string(),
@@ -111,11 +117,21 @@ fn parse_request(request: &mut String) -> Result<Request, ()> {
         Some(path) => path.to_string(),
         None => return Err(()),
     };
+    let http_version = match parts.next() {
+        Some(version) => version.trim().to_string(),
+        None => return Err(()),
+    };
+    let time = Local::now();
 
-    Ok( Request { method: method, path: path } )
+    Ok( Request {
+        http_version: http_version,
+        method: method,
+        path: path,
+        time: time
+    } )
 }
 
-fn build_response(request: Request, static_root: &String) -> Response {
+fn build_response(request: &Request, static_root: &String) -> Response {
     let mut response = Response::new();
     if request.method != "GET" {
         response.status = StatusCode::METHOD_NOT_ALLOWED;
@@ -143,6 +159,18 @@ fn add_file_to_response(path: &String, response: &mut Response, static_root: &St
             }
         }
     }
+}
+
+// TODO: Print time elapsed.
+fn log_request(request: &Request, response: &Response) {
+    println!(
+        "[{}] \"{} {} {}\" {}",
+        request.time,
+        request.method,
+        request.path,
+        request.http_version,
+        response.status.as_u16(),
+    );
 }
 
 fn create_bad_request_response() -> Response {
