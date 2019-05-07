@@ -161,7 +161,6 @@ fn add_file_to_response(path: &String, response: &mut Response, static_root: &St
     }
 }
 
-// TODO: Print time elapsed.
 fn log_request(request: &Request, response: &Response) {
     println!(
         "[{}] \"{} {} {}\" {}",
