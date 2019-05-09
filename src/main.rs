@@ -9,6 +9,8 @@ extern crate chrono;
 
 
 fn main() -> io::Result<()> {
+    println!("Starting server...");
+
     let listener = TcpListener::bind("127.0.0.1:8001")?;
     let static_root = match env::var("STATIC_ROOT") {
         Ok(val) => val,
@@ -23,6 +25,8 @@ fn main() -> io::Result<()> {
     if !path.is_dir() {
         panic!("Static root ({}) is not a directory.", &static_root);
     }
+
+    println!("Server started!");
 
     for stream in listener.incoming() {
         match stream {
